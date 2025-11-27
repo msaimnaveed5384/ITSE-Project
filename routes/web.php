@@ -13,6 +13,4 @@ Route::get('/', function () {
 
 Route::post('/login',[UserController::class, 'Login']);
 
-Route::get('/dashboard', function(){
-    return Inertia::render('Dashboard');
-})->middleware(HandleUsers::class);
+Route::get('/dashboard/student', [UserController::class, 'studentDashboard'])->middleware(HandleUsers::class);
