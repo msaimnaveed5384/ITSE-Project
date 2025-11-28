@@ -1736,3 +1736,14 @@
   .admin-overview .stats-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
+/* Teacher Dashboard Specific Styles */
+.teacher-dashboard .sidebar { width: 180px; padding: 22px; background: #fbfdff; }
+.teacher-dashboard .sidebar .logo-box { margin-bottom: 10px; }
+.teacher-dashboard .nav button { padding: 10px 12px; border-radius: 8px; background: transparent; border: none; text-align: left; color: #6b7280; font-weight: 600; cursor: pointer; }
+.teacher-dashboard .nav button.active, .teacher-dashboard .nav button:hover { background: #eff6ff; color: #1e3a8a; }
+.teacher-dashboard .main-content { padding: 20px 36px; }
+.teacher-dashboard .section-content { padding: 18px; background: #fff; border-radius: 8px; border: 1px solid #eef2ff; }
+.teacher-dashboard .data-table thead th { background: #f8fafc; }
+.teacher-dashboard .page-body { padding: 12px 0; }
+
+
