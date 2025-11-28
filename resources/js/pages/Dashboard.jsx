@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import "../css/studashboard.css";
+import "../css/dashboard.css";
 import {
   BookOpen,
   BarChart3,
@@ -10,6 +10,8 @@ import {
   Settings,
   Edit2,
   Check,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Link, usePage } from "@inertiajs/react";
 
@@ -17,46 +19,99 @@ function StudentDashboard() {
   const { users } = usePage().props;
 
   const [activeTab, setActiveTab] = useState("overview");
-  const [todos, setTodos] = useState([
-    { id: 1, text: "ITSE Project", time: "08:00 AM", completed: false },
-    { id: 2, text: "Figma", time: "", completed: false },
-    { id: 3, text: "SRS Document", time: "", completed: false },
-    { id: 4, text: "COM Assignment 3", time: "02:40 PM", completed: false },
-    { id: 5, text: "Data Structures- Project", time: "06:50 PM", completed: true },
-  ]);
+  const [currentMonth, setCurrentMonth] = useState(new Date(2023, 10)); // November 2023
 
-  const toggleTodo = (id) => {
-    setTodos(todos.map((todo) =>
-      todo.id === id ? { ...todo, completed: !todo.completed } : todo
-    ));
+  // Attendance data for November 2023
+  const attendanceData = {
+    1: "present",
+    2: "present",
+    3: "present",
+    4: "present",
+    5: "holiday",
+    6: "present",
+    7: "present",
+    8: "present",
+    9: "sick_leave",
+    10: "sick_leave",
+    11: "present",
+    12: "holiday",
+    13: "present",
+    14: "present",
+    15: "absent",
+    16: "present",
+    17: "present",
+    18: "present",
+    19: "holiday",
+    20: "present",
+    21: "present",
+    22: "present",
+    23: "absent",
+    24: "present",
+    25: "present",
+    26: "holiday",
+    27: "present",
+    28: "present",
+    29: "present",
+    30: "present",
   };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "present":
+        return "#22c55e"; // green
+      case "sick_leave":
+        return "#ef4444"; // red
+      case "absent":
+        return "#ef4444"; // red
+      case "holiday":
+        return "#eab308"; // yellow
+      default:
+        return "#f3f4f6"; // gray
+    }
+  };
+
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case "present":
+        return "Present";
+      case "sick_leave":
+        return "Sick leave";
+      case "absent":
+        return "Absent";
+      case "holiday":
+        return "Holiday";
+      default:
+        return "";
+    }
+  };
+
+  const getDaysInMonth = (date) => {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = (date) => {
+    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+  };
+
+  const monthName = currentMonth.toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
 
   // Render different content based on active tab
   const renderTabContent = () => {
     switch (activeTab) {
       case "overview":
         return (
-          <>
-            {/* Greeting */}
-            <section className="greeting-section">
-              <div className="greeting-text">
-                <h2>
-                  Welcome, <span className="user-name">{users[0].name}</span>
-                </h2>
-                <p className="greeting-subtitle">
-                  Let's keep watching new today!
-                </p>
-              </div>
-            </section>
-
-            {/* Stats Cards */}
+          <div className="overview-full">
+            {/* Stats Section */}
             <section className="stats-section">
               <div className="stat-card">
                 <div className="stat-header">
                   <h3>Total Enrolled</h3>
                   <button className="stat-menu">⚙</button>
                 </div>
-                <p className="stat-value">5000</p>
+                <p className="stat-value">6</p>
               </div>
 
               <div className="stat-card">
@@ -64,56 +119,54 @@ function StudentDashboard() {
                   <h3>Completed</h3>
                   <button className="stat-menu">⚙</button>
                 </div>
-                <p className="stat-value">50</p>
+                <p className="stat-value">1</p>
               </div>
 
               <div className="stat-card">
                 <div className="stat-header">
-                  <h3>Quiz Score</h3>
+                  <h3>GPA</h3>
                   <button className="stat-menu">⚙</button>
                 </div>
-                <p className="stat-value">50</p>
+                <p className="stat-value">3.8</p>
+              </div>
+
+              <div className="stat-card">
+                <div className="stat-header">
+                  <h3>Attendance</h3>
+                  <button className="stat-menu">⚙</button>
+                </div>
+                <p className="stat-value">92%</p>
               </div>
             </section>
 
             {/* Charts Section */}
             <section className="charts-section">
               <div className="chart-container hours-chart">
-                <h3 className="chart-title">Hours Spent</h3>
+                <h3 className="chart-title">Hours Spent This Month</h3>
                 <div className="bar-chart">
                   <div className="bar-item">
-                    <div className="bar bar-orange" style={{ height: "40%" }}></div>
-                    <span className="bar-label">Jan</span>
+                    <div className="bar bar-teal" style={{ height: "40%" }}></div>
+                    <span className="bar-label">Week 1</span>
                   </div>
                   <div className="bar-item">
-                    <div className="bar bar-teal" style={{ height: "20%" }}></div>
-                    <span className="bar-label">Feb</span>
+                    <div className="bar bar-teal" style={{ height: "60%" }}></div>
+                    <span className="bar-label">Week 2</span>
                   </div>
                   <div className="bar-item">
-                    <div className="bar bar-orange" style={{ height: "50%" }}></div>
-                    <span className="bar-label">Mar</span>
+                    <div className="bar bar-teal" style={{ height: "50%" }}></div>
+                    <span className="bar-label">Week 3</span>
                   </div>
                   <div className="bar-item">
-                    <div
-                      className="bar bar-teal"
-                      style={{ height: "65%" }}
-                    ></div>
-                    <span className="bar-label">Apr</span>
-                  </div>
-                  <div className="bar-item">
-                    <div className="bar bar-orange" style={{ height: "35%" }}></div>
-                    <span className="bar-label">May</span>
+                    <div className="bar bar-teal" style={{ height: "70%" }}></div>
+                    <span className="bar-label">Week 4</span>
                   </div>
                 </div>
               </div>
 
               <div className="chart-container performance-chart">
-                <h3 className="chart-title">Performance</h3>
+                <h3 className="chart-title">Overall Performance</h3>
                 <div className="performance-metric">
-                  <div className="metric-label">Point Progress</div>
-                  <select className="metric-select">
-                    <option>Monthly</option>
-                  </select>
+                  <div className="metric-label">Average Grade</div>
                 </div>
                 <div className="circular-progress">
                   <svg viewBox="0 0 120 120" className="progress-svg">
@@ -130,128 +183,305 @@ function StudentDashboard() {
                       cy="60"
                       r="50"
                       fill="none"
-                      stroke="#ff9999"
+                      stroke="#22c55e"
                       strokeWidth="8"
-                      strokeDasharray="157 314"
+                      strokeDasharray="235.5 314"
                       transform="rotate(-90 60 60)"
                     />
-                    <circle cx="60" cy="60" r="8" fill="#ff9999" />
+                    <circle cx="60" cy="60" r="8" fill="#22c55e" />
                   </svg>
-                  <div className="progress-text">Your Point:</div>
-                  <div className="progress-value">8.966</div>
+                  <div className="progress-text">Grade Point:</div>
+                  <div className="progress-value">3.8/4.0</div>
                 </div>
               </div>
             </section>
 
-            {/* Bottom Section: To-Do List and Profile */}
-            <section className="bottom-section">
-              <div className="todo-container">
-                <h3 className="todo-title">To Do List</h3>
-                <div className="todo-list">
-                  {todos.map((todo) => (
-                    <div
-                      key={todo.id}
-                      className={`todo-item ${todo.completed ? "completed" : ""}`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={todo.completed}
-                        onChange={() => toggleTodo(todo.id)}
-                        className="todo-checkbox"
-                      />
-                      <span className="todo-text">{todo.text}</span>
-                      {todo.time && <span className="todo-time">{todo.time}</span>}
-                    </div>
-                  ))}
+            {/* Upcoming Deadlines */}
+            <section className="upcoming-section">
+              <h3 className="section-title">Upcoming Deadlines</h3>
+              <div className="deadlines-list">
+                <div className="deadline-item">
+                  <div className="deadline-date">Dec 5</div>
+                  <div className="deadline-info">
+                    <h4>JavaScript Project Submission</h4>
+                    <p>Web Development Course</p>
+                  </div>
+                  <span className="deadline-priority high">High</span>
+                </div>
+                <div className="deadline-item">
+                  <div className="deadline-date">Dec 10</div>
+                  <div className="deadline-info">
+                    <h4>Data Structures Assignment</h4>
+                    <p>Data Structures Course</p>
+                  </div>
+                  <span className="deadline-priority medium">Medium</span>
+                </div>
+                <div className="deadline-item">
+                  <div className="deadline-date">Dec 15</div>
+                  <div className="deadline-info">
+                    <h4>Mobile App Midterm Exam</h4>
+                    <p>Mobile Development Course</p>
+                  </div>
+                  <span className="deadline-priority high">High</span>
                 </div>
               </div>
+            </section>
 
-              <div className="profile-container">
-                <div className="profile-header">
-                  <h3>Profile</h3>
-                  <button className="edit-btn">
-                    <Edit2 size={16} />
-                  </button>
-                </div>
-
-                <div className="profile-avatar">
-                  <img
-                    src="https://ui-avatars.com/api/?name=Ahmad+Naeem&background=4f46e5&color=fff&size=120"
-                    alt="Profile"
-                    className="avatar-img"
-                  />
-                  <span className="verified-badge">✓</span>
-                </div>
-
-                <h4 className="profile-name">M. Ahmad Naeem</h4>
-                <p className="profile-id">SE-3A</p>
-
-                <div className="profile-calendar">
-                  <div className="calendar-header">
-                    <button className="calendar-nav">&lt;</button>
-                    <span className="calendar-month">November 2025</span>
-                    <button className="calendar-nav">&gt;</button>
+            {/* Recent Activity */}
+            <section className="recent-activity-section">
+              <h3 className="section-title">Recent Activity</h3>
+              <div className="activity-list">
+                <div className="activity-item">
+                  <div className="activity-icon">📝</div>
+                  <div className="activity-content">
+                    <h4>Quiz 3 Graded</h4>
+                    <p>JavaScript - Score: 18/20 (90%)</p>
+                    <span className="activity-time">2 hours ago</span>
                   </div>
-                  <div className="calendar-grid">
-                    <div className="calendar-day">S</div>
-                    <div className="calendar-day">M</div>
-                    <div className="calendar-day">T</div>
-                    <div className="calendar-day">W</div>
-                    <div className="calendar-day">T</div>
-                    <div className="calendar-day">F</div>
-                    <div className="calendar-day">S</div>
-
-                    {[
-                      "", "", "", "", "", "",
-                      1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-                      11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-                      21, 22, 23, 24, 25
-                    ].map((day, idx) => (
-                      <div key={idx} className="calendar-date">
-                        {day}
-                      </div>
-                    ))}
+                </div>
+                <div className="activity-item">
+                  <div className="activity-icon">📚</div>
+                  <div className="activity-content">
+                    <h4>New Assignment Posted</h4>
+                    <p>Database Design - Assignment 5</p>
+                    <span className="activity-time">1 day ago</span>
+                  </div>
+                </div>
+                <div className="activity-item">
+                  <div className="activity-icon">✅</div>
+                  <div className="activity-content">
+                    <h4>Assignment Submitted</h4>
+                    <p>Web Development - Project 1</p>
+                    <span className="activity-time">3 days ago</span>
                   </div>
                 </div>
               </div>
             </section>
-          </>
+          </div>
         );
       
       case "courses":
         return (
-          <div className="tab-content">
-            <h2>Courses</h2>
-            <p>Your enrolled courses will appear here.</p>
-            {/* Add courses content */}
-          </div>
+          <section className="section-content">
+            <div className="section-header">
+              <h2>Courses</h2>
+              <button className="btn-primary">Enroll New Course</button>
+            </div>
+
+            <div className="courses-grid">
+              {[
+                { id: 1, name: "Introduction to JavaScript", instructor: "Dr. Ahmed Hassan", progress: 75, credits: 3, status: "In Progress" },
+                { id: 2, name: "Web Development Basics", instructor: "Prof. Sarah Khan", progress: 90, credits: 4, status: "In Progress" },
+                { id: 3, name: "Data Structures", instructor: "Dr. Ali Mohamed", progress: 60, credits: 3, status: "In Progress" },
+                { id: 4, name: "Database Design", instructor: "Prof. Fatima Al-Mansouri", progress: 100, credits: 4, status: "Completed" },
+                { id: 5, name: "Mobile Development", instructor: "Dr. Hassan Ibrahim", progress: 45, credits: 3, status: "In Progress" },
+                { id: 6, name: "Cloud Computing", instructor: "Prof. Zainab Ali", progress: 30, credits: 4, status: "In Progress" },
+              ].map((course) => (
+                <div key={course.id} className="course-card">
+                  <div className="course-header">
+                    <h3>{course.name}</h3>
+                    <span className={`course-status ${course.status === "Completed" ? "completed" : "in-progress"}`}>
+                      {course.status}
+                    </span>
+                  </div>
+                  <p className="course-instructor">Instructor: {course.instructor}</p>
+                  <p className="course-credits">Credits: {course.credits}</p>
+                  
+                  <div className="progress-bar-container">
+                    <div className="progress-bar">
+                      <div 
+                        className="progress-fill"
+                        style={{ width: `${course.progress}%` }}
+                      ></div>
+                    </div>
+                    <span className="progress-text">{course.progress}%</span>
+                  </div>
+
+                  <button className="btn-secondary">View Details</button>
+                </div>
+              ))}
+            </div>
+          </section>
         );
       
       case "attendance":
         return (
-          <div className="tab-content">
-            <h2>Attendance</h2>
-            <p>Your attendance records will appear here.</p>
-            {/* Add attendance content */}
-          </div>
+          <section className="section-content">
+            <div className="section-header">
+              <h2>Attendance</h2>
+            </div>
+
+            <div className="attendance-stats">
+              <div className="stat-box">
+                <div className="stat-value" style={{ color: "#22c55e" }}>92%</div>
+                <div className="stat-label">Total Attendance</div>
+              </div>
+              <div className="stat-box">
+                <div className="stat-value" style={{ color: "#22c55e" }}>92 Days</div>
+                <div className="stat-label">Present</div>
+              </div>
+              <div className="stat-box">
+                <div className="stat-value" style={{ color: "#ef4444" }}>5 Days</div>
+                <div className="stat-label">Sick Leave</div>
+              </div>
+              <div className="stat-box">
+                <div className="stat-value" style={{ color: "#ef4444" }}>3 Days</div>
+                <div className="stat-label">Absent</div>
+              </div>
+            </div>
+
+            <div className="calendar-section-large">
+              <h3>Monthly Attendance View</h3>
+              <div className="calendar-wrapper">
+                <div className="calendar-controls">
+                  <button 
+                    className="calendar-nav-btn"
+                    onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+                  <span className="calendar-month-label">{monthName}</span>
+                  <button 
+                    className="calendar-nav-btn"
+                    onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
+                  >
+                    <ChevronRight size={20} />
+                  </button>
+                </div>
+
+                <div className="calendar-grid-large">
+                  {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map(
+                    (day) => (
+                      <div key={day} className="calendar-day-header">
+                        {day}
+                      </div>
+                    )
+                  )}
+
+                  {Array.from({ length: getDaysInMonth(currentMonth) }).map((_, index) => {
+                    const day = index + 1;
+                    const status = attendanceData[day];
+
+                    return (
+                      <div key={day} className="calendar-date-cell">
+                        <div className="date-number">{day}</div>
+                        {status && (
+                          <div 
+                            className="status-badge"
+                            style={{ backgroundColor: getStatusColor(status) }}
+                            title={getStatusLabel(status)}
+                          >
+                            {getStatusLabel(status)}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </section>
         );
       
       case "marks":
         return (
-          <div className="tab-content">
-            <h2>Marks/Assessments</h2>
-            <p>Your marks and assessment results will appear here.</p>
-            {/* Add marks content */}
-          </div>
+          <section className="section-content">
+            <div className="section-header">
+              <h2>Marks & Assessments</h2>
+            </div>
+
+            <div className="assessments-table-wrapper">
+              <table className="assessments-table">
+                <thead>
+                  <tr>
+                    <th>Assessment Title</th>
+                    <th>Course</th>
+                    <th>Type</th>
+                    <th>Marks Obtained</th>
+                    <th>Total Marks</th>
+                    <th>Percentage</th>
+                    <th>Grade</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { id: 1, title: "Midterm Exam", course: "JavaScript", type: "Exam", obtained: 85, total: 100, percentage: 85, grade: "A", status: "Graded" },
+                    { id: 2, title: "Assignment 1", course: "Web Dev", type: "Assignment", obtained: 45, total: 50, percentage: 90, grade: "A+", status: "Graded" },
+                    { id: 3, title: "Project 1", course: "Data Structures", type: "Project", obtained: 38, total: 50, percentage: 76, grade: "B", status: "Graded" },
+                    { id: 4, title: "Quiz 3", course: "JavaScript", type: "Quiz", obtained: 18, total: 20, percentage: 90, grade: "A+", status: "Graded" },
+                    { id: 5, title: "Final Project", course: "Mobile Dev", type: "Project", obtained: 0, total: 100, percentage: 0, grade: "-", status: "Pending" },
+                    { id: 6, title: "Database Assignment", course: "Database Design", type: "Assignment", obtained: 48, total: 50, percentage: 96, grade: "A+", status: "Graded" },
+                  ].map((assessment) => (
+                    <tr key={assessment.id} className={assessment.status === "Pending" ? "pending-row" : ""}>
+                      <td className="bold">{assessment.title}</td>
+                      <td>{assessment.course}</td>
+                      <td><span className="badge-type">{assessment.type}</span></td>
+                      <td>{assessment.obtained}</td>
+                      <td>{assessment.total}</td>
+                      <td className="bold">{assessment.percentage}%</td>
+                      <td>
+                        <span className={`grade-badge grade-${assessment.grade.toLowerCase()}`}>
+                          {assessment.grade}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`status-badge ${assessment.status.toLowerCase()}`}>
+                          {assessment.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
         );
       
       case "certification":
         return (
-          <div className="tab-content">
-            <h2>Certification</h2>
-            <p>Your certifications will appear here.</p>
-            {/* Add certification content */}
-          </div>
+          <section className="section-content">
+            <div className="section-header">
+              <h2>Certifications</h2>
+            </div>
+
+            <div className="certifications-grid">
+              {[
+                { id: 1, title: "JavaScript Fundamentals Certificate", issuer: "FreeCodeCamp", date: "2024-06-15", status: "Earned" },
+                { id: 2, title: "Web Development Professional", issuer: "Coursera", date: "2024-08-20", status: "Earned" },
+                { id: 3, title: "Data Structures Mastery", issuer: "Udemy", date: "2024-09-10", status: "Earned" },
+                { id: 4, title: "Cloud Computing Fundamentals", issuer: "AWS Academy", date: "2025-01-15", status: "In Progress" },
+                { id: 5, title: "Mobile App Development", issuer: "Google", date: "", status: "Not Started" },
+                { id: 6, title: "Full Stack Developer", issuer: "LinkedIn Learning", date: "", status: "Not Started" },
+              ].map((cert) => (
+                <div key={cert.id} className="certification-card">
+                  <div className="cert-icon">
+                    <Award size={40} />
+                  </div>
+                  <h3>{cert.title}</h3>
+                  <p className="cert-issuer">Issued by: {cert.issuer}</p>
+                  {cert.date && <p className="cert-date">Date Earned: {cert.date}</p>}
+                  
+                  <div className={`cert-status ${cert.status === "Earned" ? "earned" : cert.status === "In Progress" ? "in-progress" : "not-started"}`}>
+                    {cert.status}
+                  </div>
+
+                  {cert.status === "Earned" && (
+                    <div className="cert-actions">
+                      <button className="btn-secondary">View Certificate</button>
+                      <button className="btn-secondary">Download</button>
+                    </div>
+                  )}
+                  {cert.status === "In Progress" && (
+                    <button className="btn-secondary">Continue Learning</button>
+                  )}
+                  {cert.status === "Not Started" && (
+                    <button className="btn-primary">Enroll Now</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
         );
       
       default:

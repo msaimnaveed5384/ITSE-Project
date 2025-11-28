@@ -12,5 +12,10 @@ Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');
 })->name('dashboard');
 
+use App\Http\Controllers\AdminController;
+
+Route::get('/admin/dashboard', [AdminController::class, 'index'])
+    ->name('admin.dashboard');
+
 
 
