@@ -22,3 +22,5 @@ Route::get('/dashboard/teacher',[UserController::class, 'teacherDashboard'])->mi
 Route::post('/adduser', [UserController::class,'addUser'])->middleware(HandleAdmin::class);
 Route::post('/addcourse', [UserController::class, 'addcourse'])->middleware(HandleAdmin::class);
 Route::post('/enrollstudent', [UserController::class, 'enrollStudent'])->middleware(HandleAdmin::class);
+Route::post('/markattendance', [UserController::class, 'markAttendance']);
+Route::post('/uploadmarks', [UserController::class, 'uploadMarks']);

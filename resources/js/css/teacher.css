@@ -1903,6 +1903,20 @@
 .teacher-dashboard .data-table thead th { background: #f8fafc; }
 .teacher-dashboard .page-body { padding: 12px 0; }
 
+/* Improved alignment for teacher dashboard tabs and content */
+.dashboard-container .sidebar { flex-shrink: 0; }
+.teacher-dashboard .nav { display: flex; flex-direction: column; gap: 8px; padding-top: 6px; }
+.teacher-dashboard .nav .nav-item { text-align: left; width: 100%; padding: 10px 12px; border-radius: 8px; background: transparent; border: none; color: #6b7280; font-weight: 600; cursor: pointer; }
+.teacher-dashboard .nav .nav-item:hover { background: #eff6ff; color: #1e3a8a; }
+.teacher-dashboard .nav .nav-item.active { background: #eff6ff; color: #1e3a8a; }
+
+.teacher-dashboard .page-body { display: flex; flex-direction: column; gap: 18px; padding: 20px 28px; }
+.teacher-dashboard .page-body > .section-content, .teacher-dashboard .page-body > .overview-full, .teacher-dashboard .page-body > .section-content .attendance-table-container { max-width: 1100px; width: 100%; margin: 0; }
+.teacher-dashboard .section-header { align-items: center; gap: 12px; }
+
+/* ensure the main content area contents don't hug the edge */
+.teacher-dashboard .main-content { padding-top: 18px; }
+
 /* Enhanced Teacher UI */
 .teacher-hero {
   background: linear-gradient(90deg, rgba(99,102,241,0.08), rgba(56,189,248,0.03));
@@ -1968,4 +1982,191 @@
 @media (max-width: 768px) {
   .teacher-hero { padding: 12px 18px; flex-direction:column; align-items:flex-start; }
   .cards-grid { grid-template-columns: 1fr; }
+}
+
+/* Attendance Styles */
+.attendance-controls {
+  margin-bottom: 20px;
+}
+
+.attendance-form .form-row {
+  display: flex;
+  gap: 16px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.field-label {
+  font-weight: 500;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.date-input, .course-select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.attendance-table-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.attendance-table th, .attendance-table td {
+  padding: 12px 8px;
+  text-align: left;
+}
+
+.attendance-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.attendance-btn {
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.attendance-btn:hover {
+  transform: translateY(-1px);
+}
+
+.attendance-btn.present {
+  border-color: #10b981;
+  color: #10b981;
+}
+
+.attendance-btn.present.active {
+  background: #10b981;
+  color: white;
+}
+
+.attendance-btn.absent {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.attendance-btn.absent.active {
+  background: #ef4444;
+  color: white;
+}
+
+.attendance-btn.late {
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+
+.attendance-btn.late.active {
+  background: #f59e0b;
+  color: white;
+}
+
+.attendance-btn.not-marked {
+  border-color: #6b7280;
+  color: #6b7280;
+}
+
+.attendance-btn.not-marked.active {
+  background: #6b7280;
+  color: white;
+}
+
+.attendance-status {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.attendance-status.P {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.attendance-status.A {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.attendance-status.L {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.attendance-status.not-marked {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.attendance-summary {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.attendance-summary h4 {
+  margin-bottom: 16px;
+  color: #374151;
+}
+
+.summary-stats {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.summary-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.stat-value.present { color: #10b981; }
+.stat-value.absent { color: #ef4444; }
+.stat-value.late { color: #f59e0b; }
+.stat-value.not-marked { color: #6b7280; }
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6b7280;
+}
+
+.empty-icon {
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.error-message {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  border: 1px solid #fecaca;
 }
