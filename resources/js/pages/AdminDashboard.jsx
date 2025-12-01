@@ -2,6 +2,7 @@ import React, { use, useState } from 'react';
 import { Link, useForm, usePage} from '@inertiajs/react';
 import '../css/admin.css'; 
 import { Trash2, Edit2, Info, Plus, UserPlus, BookOpen } from 'lucide-react'; 
+import FlashMessage from '../components/FlashMessage';
 
 export default function AdminDashboard() {
   // Normalize page props and ensure `users` is always an array.
@@ -22,7 +23,7 @@ export default function AdminDashboard() {
     users = [];
   }
 
-  const { courses = [], enrollments = [], attendance = [], results = [] } = pageProps;
+  const { courses = [], enrollments = [], attendance = [], results = [], flash = {} } = pageProps;
   const [activeSection, setActiveSection] = useState('overview'); 
   const [activeTab, setActiveTab] = useState('data'); // 'data' or 'description'
   const [showAddCourse, setShowAddCourse] = useState(false);
@@ -178,12 +179,7 @@ export default function AdminDashboard() {
 
   const renderTabButtons = () => (
     <div className="tab-buttons">
-      <button 
-        className={`tab-btn ${activeTab === 'data' ? 'active' : ''}`}
-        onClick={() => setActiveTab('data')}
-      >
-        Data
-      </button>
+      
       <button 
         className={`tab-btn ${activeTab === 'description' ? 'active' : ''}`}
         onClick={() => setActiveTab('description')}
@@ -521,6 +517,7 @@ export default function AdminDashboard() {
               <h4>Enrollments</h4> 
               <p className="stat-value">{enrollments.length}</p> 
             </div> 
+            
           </div> 
           <div className="admin-actions"> 
             <button onClick={handleAddCourse} className="btn-primary">
@@ -536,6 +533,7 @@ export default function AdminDashboard() {
               Add Enrollment
             </button> 
           </div>
+          
         </>
       ) : (
         renderDescription()
@@ -685,6 +683,8 @@ export default function AdminDashboard() {
           <button className={`nav-item ${activeSection === 'students' ? 'active' : ''}`} onClick={() => { setActiveSection('students'); setActiveTab('data'); }}>Students</button> 
           <button className={`nav-item ${activeSection === 'enrollments' ? 'active' : ''}`} onClick={() => { setActiveSection('enrollments'); setActiveTab('data'); }}>Enrollments</button> 
           <button className={`nav-item ${activeSection === 'results' ? 'active' : ''}`} onClick={() => { setActiveSection('results'); setActiveTab('data'); }}>Results</button> 
+          <button ><Link href="/logout" className='logout'>Logout</Link></button>
+          
         </nav> 
       </aside> 
       <main className="main-content"> 
@@ -692,10 +692,14 @@ export default function AdminDashboard() {
           <h2>Admin Dashboard</h2> 
           <div className="header-actions"> 
             {renderTabButtons()}
-            <button className="btn-secondary">Export</button> 
+           
           </div> 
-        </header> 
-        <section className="page-body"> 
+  </header> 
+
+  {/* Server flash message (auto-fades) */}
+  <FlashMessage message={flash?.message} />
+
+  <section className="page-body"> 
           {activeSection === 'overview' && renderOverview()} 
           {activeSection === 'courses' && renderCourses()} 
           {activeSection === 'teachers' && renderUsers('teacher')} 

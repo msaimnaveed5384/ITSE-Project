@@ -3,6 +3,7 @@
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\HandleAdmin;
 use App\Http\Middleware\HandleUsers;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -24,3 +25,8 @@ Route::post('/addcourse', [UserController::class, 'addcourse'])->middleware(Hand
 Route::post('/enrollstudent', [UserController::class, 'enrollStudent'])->middleware(HandleAdmin::class);
 Route::post('/markattendance', [UserController::class, 'markAttendance']);
 Route::post('/uploadmarks', [UserController::class, 'uploadMarks']);
+
+Route::get('/logout',function(){
+    Auth::logout();
+    return redirect('/');
+});

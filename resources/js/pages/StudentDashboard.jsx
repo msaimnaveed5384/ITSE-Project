@@ -1,582 +1,468 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import "../css/studashboard.css";
-import {
-  BookOpen,
-  BarChart3,
-  Clock,
-  Award,
-  LogOut,
-  Bell,
-  Settings,
-  Edit2,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { LogOut, Bell, Settings } from "lucide-react";
 import { Link, usePage } from "@inertiajs/react";
+import FlashMessage from "../components/FlashMessage";
 
 function StudentDashboard() {
-  const { users } = usePage().props;
+  // Expect Inertia props: user (object) or users (collection), enrollments (array), courses (array), attendances (array), marks (array)
+  const props = usePage().props || {};
+  const { user, users, enrollments = [], courses = [], attendances = [], marks = [], flash = {} } = props;
+
+  // Determine current user object (the controller previously passed `users` collection)
+  const currentUser = useMemo(() => {
+    if (user) return user;
+    if (Array.isArray(users) && users.length > 0) return users[0];
+    // fallback to empty object
+    return {};
+  }, [user, users]);
 
   const [activeTab, setActiveTab] = useState("overview");
-  const [currentMonth, setCurrentMonth] = useState(new Date(2023, 10)); // November 2023
 
-  // Attendance data for November 2023
-  const attendanceData = {
-    1: "present",
-    2: "present",
-    3: "present",
-    4: "present",
-    5: "holiday",
-    6: "present",
-    7: "present",
-    8: "present",
-    9: "sick_leave",
-    10: "sick_leave",
-    11: "present",
-    12: "holiday",
-    13: "present",
-    14: "present",
-    15: "absent",
-    16: "present",
-    17: "present",
-    18: "present",
-    19: "holiday",
-    20: "present",
-    21: "present",
-    22: "present",
-    23: "absent",
-    24: "present",
-    25: "present",
-    26: "holiday",
-    27: "present",
-    28: "present",
-    29: "present",
-    30: "present",
-  };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "present":
-        return "#22c55e"; // green
-      case "sick_leave":
-        return "#ef4444"; // red
-      case "absent":
-        return "#ef4444"; // red
-      case "holiday":
-        return "#eab308"; // yellow
-      default:
-        return "#f3f4f6"; // gray
+  // Derive enrollments for this student. If enrollments list is global, filter by student id.
+  const studentEnrollments = useMemo(() => {
+    if (!enrollments || enrollments.length === 0) {
+      // try relations on user
+      return (currentUser.enrollments && Array.isArray(currentUser.enrollments)) ? currentUser.enrollments : [];
     }
-  };
+    const sid = currentUser.id;
+    // if enrollments appear to belong only to this student, return all
+    const looksGlobal = enrollments.some((e) => e.student_id || e.studentId || e.student);
+    if (!looksGlobal) return enrollments;
+    return enrollments.filter((e) => {
+      if (!sid) return false;
+      if (e.student_id) return e.student_id === sid;
+      if (e.studentId) return e.studentId === sid;
+      if (e.student && e.student.id) return e.student.id === sid;
+      return false;
+    });
+  }, [enrollments, currentUser]);
 
-  const getStatusLabel = (status) => {
-    switch (status) {
-      case "present":
-        return "Present";
-      case "sick_leave":
-        return "Sick leave";
-      case "absent":
-        return "Absent";
-      case "holiday":
-        return "Holiday";
-      default:
-        return "";
+  // Map enrollments to course objects (if course list provided)
+  const enrolledCourses = useMemo(() => {
+    return studentEnrollments.map((en) => {
+      const courseFromList = courses.find((c) => c.id === (en.course_id || en.courseId || (en.course && en.course.id))) || en.course || null;
+      return {
+        enroll: en,
+        course: courseFromList,
+      };
+    });
+  }, [studentEnrollments, courses]);
+
+  // Attendance records for this student
+  const studentAttendances = useMemo(() => {
+    if (!attendances || attendances.length === 0) return [];
+    const sid = currentUser.id;
+    return attendances.filter((a) => {
+      if (!sid) return false;
+      if (a.student_id) return a.student_id === sid;
+      if (a.studentId) return a.studentId === sid;
+      if (a.enroll_id && studentEnrollments.some((e) => e.id === a.enroll_id || e.enroll_id === a.enroll_id)) return true;
+      return false;
+    });
+  }, [attendances, currentUser, studentEnrollments]);
+
+  // Marks for this student (via enrollments)
+  const studentMarks = useMemo(() => {
+    if (!marks || marks.length === 0) return [];
+    const enrollIds = studentEnrollments.map((e) => e.id || e.enroll_id);
+    return marks.filter((m) => enrollIds.includes(m.enroll_id || m.enrollId || m.enrollId));
+  }, [marks, studentEnrollments]);
+
+  // Attendance summary
+  const attendanceSummary = useMemo(() => {
+    const summary = { P: 0, A: 0, L: 0, total: 0 };
+    for (const a of studentAttendances) {
+      const s = (a.status || a.status_code || '').toString().toUpperCase();
+      if (s === 'P') summary.P++;
+      else if (s === 'A') summary.A++;
+      else if (s === 'L') summary.L++;
+      summary.total++;
     }
+    summary.percent = summary.total === 0 ? 0 : Math.round((summary.P / summary.total) * 100);
+    return summary;
+  }, [studentAttendances]);
+
+  // Group marks by course for display
+  const marksByCourse = useMemo(() => {
+    const map = {};
+    for (const m of studentMarks) {
+      // attempt to resolve course id via enrollment
+      const enrollId = m.enroll_id || m.enrollId || m.enrollId;
+      const enroll = studentEnrollments.find((e) => (e.id || e.enroll_id) === enrollId) || {};
+      const course = enroll.course || courses.find((c) => c.id === (m.course_id || m.courseId)) || null;
+      const key = course ? course.id : enrollId || 'unknown';
+      if (!map[key]) map[key] = { course, items: [] };
+      map[key].items.push(m);
+    }
+    return map;
+  }, [studentMarks, studentEnrollments, courses]);
+
+  // Group attendances by course id for course-wise tables
+  const attendancesByCourse = useMemo(() => {
+    const map = {};
+    // helper to resolve course id from attendance record
+    const resolveCourseId = (a) => {
+      if (!a) return null;
+      if (a.course_id) return a.course_id;
+      if (a.courseId) return a.courseId;
+      if (a.course && a.course.id) return a.course.id;
+      // fallback: try to find via enrollment on client side (studentEnrollments)
+      if (a.enroll_id) {
+        const en = studentEnrollments.find((e) => (e.id || e.enroll_id) === a.enroll_id);
+        if (en) return en.course_id || (en.course && en.course.id) || null;
+      }
+      return null;
+    };
+
+    for (const a of studentAttendances) {
+      const cid = resolveCourseId(a) || 'unknown';
+      if (!map[cid]) map[cid] = [];
+      map[cid].push(a);
+    }
+
+    // sort each group's records by date descending
+    Object.keys(map).forEach((k) => {
+      map[k].sort((x, y) => {
+        const dx = new Date(x.date || x.att_date || x.created_at || x.created_at || 0).getTime();
+        const dy = new Date(y.date || y.att_date || y.created_at || y.created_at || 0).getTime();
+        return dy - dx;
+      });
+    });
+
+    return map;
+  }, [studentAttendances, studentEnrollments]);
+
+  // Per-course attendance summary and low-attendance warnings
+  const courseAttendanceSummary = useMemo(() => {
+    const summary = {};
+    // For every enrolled course, compute percentage using attendancesByCourse
+    enrolledCourses.forEach(({ enroll, course }) => {
+      const cid = (course && course.id) || enroll.course_id || 'unknown';
+      const records = attendancesByCourse[cid] || [];
+      const total = records.length;
+      const present = records.reduce((acc, r) => {
+        const s = (r.status || r.status_code || '').toString().toUpperCase();
+        return acc + (s === 'P' ? 1 : 0);
+      }, 0);
+      const percent = total === 0 ? 0 : Math.round((present / total) * 100);
+      summary[cid] = {
+        course: course || {},
+        enroll,
+        total,
+        present,
+        percent,
+      };
+    });
+    return summary;
+  }, [enrolledCourses, attendancesByCourse]);
+
+  // Warnings list for courses below threshold (only when there are attendance records)
+  const lowAttendanceWarnings = useMemo(() => {
+    const items = [];
+    const THRESHOLD = 80;
+    Object.keys(courseAttendanceSummary).forEach((cid) => {
+      const s = courseAttendanceSummary[cid];
+      // Only warn when some attendance data exists for the course
+      if (s && s.total > 0 && s.percent < THRESHOLD) {
+        const cname = (s.course && (s.course.name || s.course.title)) || s.enroll.course_title || 'Course';
+        items.push({ cid, courseName: cname, percent: s.percent });
+      }
+    });
+    return items;
+  }, [courseAttendanceSummary]);
+
+  const statusLabel = (s) => {
+    const st = (s || '').toString().toUpperCase();
+    if (st === 'P') return 'Present';
+    if (st === 'A') return 'Absent';
+    if (st === 'L') return 'Sick Leave';
+    if (st === 'H' || st === 'HOLIDAY') return 'Holiday';
+    return st || '-';
   };
 
-  const getDaysInMonth = (date) => {
-    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-  };
+  // UI renderers
+  const renderOverview = () => (
+    <div className="overview-full">
+      <section className="stats-section">
+        <div className="stat-card">
+          <div className="stat-header"><h3>Enrolled Courses</h3></div>
+          <p className="stat-value">{enrolledCourses.length}</p>
+        </div>
 
-  const getFirstDayOfMonth = (date) => {
-    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
-  };
+        <div className="stat-card">
+          <div className="stat-header"><h3>Attendance</h3></div>
+          <p className="stat-value">{attendanceSummary.percent}%</p>
+          <small className="muted">{attendanceSummary.P} present • {attendanceSummary.A} absent • {attendanceSummary.L} leave</small>
+        </div>
 
-  const monthName = currentMonth.toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
+        <div className="stat-card">
+          <div className="stat-header"><h3>Assessments</h3></div>
+          <p className="stat-value">{studentMarks.length}</p>
+        </div>
 
-  // Render different content based on active tab
+        <div className="stat-card">
+          <div className="stat-header"><h3>Profile</h3></div>
+          <p className="stat-value">{currentUser.name || currentUser.username || '-'}</p>
+          <small className="muted">{currentUser.email || 'No email'}</small>
+        </div>
+      </section>
+
+      <section className="charts-section">
+        <div className="chart-container performance-chart">
+          <h3 className="chart-title">Overall Performance</h3>
+          <div className="performance-metric">
+            <div className="metric-label">Average Grade</div>
+          </div>
+          <div className="circular-progress">
+            <svg viewBox="0 0 120 120" className="progress-svg">
+              <circle cx="60" cy="60" r="50" fill="none" stroke="#e0e0e0" strokeWidth="8" />
+            </svg>
+            <div className="progress-text">GPA</div>
+            <div className="progress-value">{currentUser.gpa ?? 'N/A'}</div>
+          </div>
+        </div>
+
+        <div className="chart-container hours-chart">
+          <h3 className="chart-title">Enrolled Courses</h3>
+          <div className="courses-grid small">
+            {enrolledCourses.length === 0 && <div className="muted">No enrolled courses found.</div>}
+            {enrolledCourses.map(({ enroll, course }) => (
+              <div key={enroll.id || enroll.enroll_id || (course && course.id) || Math.random()} className="course-card small">
+                <div className="course-header">
+                  <h4>{(course && course.name) || enroll.course_title || 'Course'}</h4>
+                  <span className={`course-status ${(enroll.status || course?.status || '').toString().toLowerCase() === 'completed' ? 'completed' : 'in-progress'}`}>
+                    {(enroll.status && enroll.status) || (course && course.status) || 'In Progress'}
+                  </span>
+                </div>
+                <div className="progress-bar-container">
+                  <div className="progress-bar">
+                    <div className="progress-fill" style={{ width: `${(enroll.progress || course?.progress || 0)}%` }} />
+                  </div>
+                  <span className="progress-text">{enroll.progress ?? course?.progress ?? 0}%</span>
+                </div>
+                <Link href={`/courses/${(course && course.id) || ''}`} className="btn-secondary">View</Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+
+  const renderCourses = () => (
+    <section className="section-content">
+      <div className="section-header">
+        <h2>Courses</h2>
+      </div>
+      <div className="courses-grid">
+        {enrolledCourses.length === 0 && <div className="muted">You are not enrolled in any courses.</div>}
+        {enrolledCourses.map(({ enroll, course }) => (
+          <div key={enroll.id || enroll.enroll_id || (course && course.id)} className="course-card">
+            <div className="course-header">
+              <h3>{(course && course.name) || enroll.course_title || 'Course'}</h3>
+              <span className={`course-status ${(enroll.status || '').toString().toLowerCase() === 'completed' ? 'completed' : 'in-progress'}`}>
+                {(enroll.status && enroll.status) || (course && course.status) || 'In Progress'}
+              </span>
+            </div>
+            <p className="course-instructor">Instructor: {(course && course.teacher_name) || course?.teacher || 'TBD'}</p>
+            <p className="course-credits">Credits: {(course && course.credits) ?? '-'}</p>
+
+            
+
+            <div className="course-actions">
+              <Link className="btn-primary" href={`/courses/${course?.id || ''}`}>Open</Link>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+
+  const renderAttendance = () => (
+    <section className="section-content">
+      <div className="section-header"><h2>Attendance</h2></div>
+      <div className="attendance-stats">
+        <div className="stat-box"><div className="stat-value" style={{ color: '#22c55e' }}>{attendanceSummary.percent}%</div><div className="stat-label">Total Attendance</div></div>
+        <div className="stat-box"><div className="stat-value" style={{ color: '#22c55e' }}>{attendanceSummary.P}</div><div className="stat-label">Present</div></div>
+        <div className="stat-box"><div className="stat-value" style={{ color: '#ef4444' }}>{attendanceSummary.L}</div><div className="stat-label">Sick Leave</div></div>
+        <div className="stat-box"><div className="stat-value" style={{ color: '#ef4444' }}>{attendanceSummary.A}</div><div className="stat-label">Absent</div></div>
+      </div>
+
+      <div className="bottom-section" style={{ paddingTop: 20 }}>
+        {enrolledCourses.length === 0 && <div className="muted">No enrolled courses to show attendance for.</div>}
+
+        {enrolledCourses.map(({ enroll, course }) => {
+          const cid = (course && course.id) || enroll.course_id || 'unknown';
+          const records = attendancesByCourse[cid] || [];
+          return (
+            <div key={cid} className="section-content" style={{ margin: 0 }}>
+              <div className="section-header">
+                <h3 style={{ margin: 0 }}>{(course && course.name) || enroll.course_title || 'Course'}</h3>
+                <div className="stat-label">{(course && course.credits) ? `${course.credits} credits` : ''}</div>
+              </div>
+
+              <div className="assessments-table-wrapper">
+                <table className="assessments-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {records.length === 0 && (
+                      <tr><td colSpan={2} className="muted">No attendance records for this course.</td></tr>
+                    )}
+                    {records.map((r) => (
+                      <tr key={r.id || `${r.enroll_id}-${r.date || r.att_date || r.created_at}`}>
+                        <td>{new Date(r.date || r.att_date || r.created_at).toLocaleDateString()}</td>
+                        <td><span className={`status-badge`} style={{ backgroundColor: r.status === 'P' ? '#22c55e' : '#ef4444' }}>{statusLabel(r.status)}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+
+  const renderMarks = () => (
+    <section className="section-content">
+      <div className="section-header"><h2>Marks & Assessments</h2></div>
+      <div className="assessments-table-wrapper">
+        <table className="assessments-table">
+          <thead>
+            <tr>
+              <th>Assessment</th>
+              <th>Course</th>
+              <th>Type</th>
+              <th>Obtained</th>
+              <th>Total</th>
+              <th>%</th>
+              <th>Grade</th>
+            </tr>
+          </thead>
+          <tbody>
+            {studentMarks.length === 0 && (
+              <tr><td colSpan={7} className="muted">No marks available.</td></tr>
+            )}
+            {studentMarks.map((m) => {
+              const enroll = studentEnrollments.find((e) => (e.id || e.enroll_id) === m.enroll_id) || {};
+              const course = enroll.course || courses.find((c) => c.id === (m.course_id || m.courseId)) || {};
+              const percent = m.total_marks ? Math.round((m.obtained_marks / m.total_marks) * 100) : 0;
+              const grade = m.grade || (percent >= 90 ? 'A+' : percent >= 80 ? 'A' : percent >= 70 ? 'B' : percent >= 60 ? 'C' : 'D');
+              return (
+                <tr key={m.id || `${m.enroll_id}-${m.type}-${m.marked_by || ''}`}>
+                  <td className="bold">{m.title || m.type || 'Assessment'}</td>
+                  <td>{course.name || enroll.course_title || '-'}</td>
+                  <td><span className="badge-type">{m.type}</span></td>
+                  <td>{m.obtained_marks ?? m.obtained ?? '-'}</td>
+                  <td>{m.total_marks ?? m.total ?? '-'}</td>
+                  <td className="bold">{percent}%</td>
+                  <td><span className={`grade-badge grade-${String(grade).toLowerCase().replace('+','plus')}`}>{grade}</span></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+
   const renderTabContent = () => {
     switch (activeTab) {
-      case "overview":
-        return (
-          <div className="overview-full">
-            {/* Stats Section */}
-            <section className="stats-section">
-              <div className="stat-card">
-                <div className="stat-header">
-                  <h3>Total Enrolled</h3>
-                  <button className="stat-menu">⚙</button>
-                </div>
-                <p className="stat-value">6</p>
-              </div>
-
-              <div className="stat-card">
-                <div className="stat-header">
-                  <h3>Completed</h3>
-                  <button className="stat-menu">⚙</button>
-                </div>
-                <p className="stat-value">1</p>
-              </div>
-
-              <div className="stat-card">
-                <div className="stat-header">
-                  <h3>GPA</h3>
-                  <button className="stat-menu">⚙</button>
-                </div>
-                <p className="stat-value">3.8</p>
-              </div>
-
-              <div className="stat-card">
-                <div className="stat-header">
-                  <h3>Attendance</h3>
-                  <button className="stat-menu">⚙</button>
-                </div>
-                <p className="stat-value">92%</p>
-              </div>
-            </section>
-
-            {/* Charts Section */}
-            <section className="charts-section">
-              <div className="chart-container hours-chart">
-                <h3 className="chart-title">Hours Spent This Month</h3>
-                <div className="bar-chart">
-                  <div className="bar-item">
-                    <div className="bar bar-teal" style={{ height: "40%" }}></div>
-                    <span className="bar-label">Week 1</span>
-                  </div>
-                  <div className="bar-item">
-                    <div className="bar bar-teal" style={{ height: "60%" }}></div>
-                    <span className="bar-label">Week 2</span>
-                  </div>
-                  <div className="bar-item">
-                    <div className="bar bar-teal" style={{ height: "50%" }}></div>
-                    <span className="bar-label">Week 3</span>
-                  </div>
-                  <div className="bar-item">
-                    <div className="bar bar-teal" style={{ height: "70%" }}></div>
-                    <span className="bar-label">Week 4</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="chart-container performance-chart">
-                <h3 className="chart-title">Overall Performance</h3>
-                <div className="performance-metric">
-                  <div className="metric-label">Average Grade</div>
-                </div>
-                <div className="circular-progress">
-                  <svg viewBox="0 0 120 120" className="progress-svg">
-                    <circle
-                      cx="60"
-                      cy="60"
-                      r="50"
-                      fill="none"
-                      stroke="#e0e0e0"
-                      strokeWidth="8"
-                    />
-                    <circle
-                      cx="60"
-                      cy="60"
-                      r="50"
-                      fill="none"
-                      stroke="#22c55e"
-                      strokeWidth="8"
-                      strokeDasharray="235.5 314"
-                      transform="rotate(-90 60 60)"
-                    />
-                    <circle cx="60" cy="60" r="8" fill="#22c55e" />
-                  </svg>
-                  <div className="progress-text">Grade Point:</div>
-                  <div className="progress-value">3.8/4.0</div>
-                </div>
-              </div>
-            </section>
-
-            {/* Upcoming Deadlines */}
-            <section className="upcoming-section">
-              <h3 className="section-title">Upcoming Deadlines</h3>
-              <div className="deadlines-list">
-                <div className="deadline-item">
-                  <div className="deadline-date">Dec 5</div>
-                  <div className="deadline-info">
-                    <h4>JavaScript Project Submission</h4>
-                    <p>Web Development Course</p>
-                  </div>
-                  <span className="deadline-priority high">High</span>
-                </div>
-                <div className="deadline-item">
-                  <div className="deadline-date">Dec 10</div>
-                  <div className="deadline-info">
-                    <h4>Data Structures Assignment</h4>
-                    <p>Data Structures Course</p>
-                  </div>
-                  <span className="deadline-priority medium">Medium</span>
-                </div>
-                <div className="deadline-item">
-                  <div className="deadline-date">Dec 15</div>
-                  <div className="deadline-info">
-                    <h4>Mobile App Midterm Exam</h4>
-                    <p>Mobile Development Course</p>
-                  </div>
-                  <span className="deadline-priority high">High</span>
-                </div>
-              </div>
-            </section>
-
-            {/* Recent Activity */}
-            <section className="recent-activity-section">
-              <h3 className="section-title">Recent Activity</h3>
-              <div className="activity-list">
-                <div className="activity-item">
-                  <div className="activity-icon">📝</div>
-                  <div className="activity-content">
-                    <h4>Quiz 3 Graded</h4>
-                    <p>JavaScript - Score: 18/20 (90%)</p>
-                    <span className="activity-time">2 hours ago</span>
-                  </div>
-                </div>
-                <div className="activity-item">
-                  <div className="activity-icon">📚</div>
-                  <div className="activity-content">
-                    <h4>New Assignment Posted</h4>
-                    <p>Database Design - Assignment 5</p>
-                    <span className="activity-time">1 day ago</span>
-                  </div>
-                </div>
-                <div className="activity-item">
-                  <div className="activity-icon">✅</div>
-                  <div className="activity-content">
-                    <h4>Assignment Submitted</h4>
-                    <p>Web Development - Project 1</p>
-                    <span className="activity-time">3 days ago</span>
-                  </div>
-                </div>
-              </div>
-            </section>
-          </div>
-        );
-      
-      case "courses":
-        return (
-          <section className="section-content">
-            <div className="section-header">
-              <h2>Courses</h2>
-              <button className="btn-primary">Enroll New Course</button>
-            </div>
-
-            <div className="courses-grid">
-              {[
-                { id: 1, name: "Introduction to JavaScript", instructor: "Dr. Ahmed Hassan", progress: 75, credits: 3, status: "In Progress" },
-                { id: 2, name: "Web Development Basics", instructor: "Prof. Sarah Khan", progress: 90, credits: 4, status: "In Progress" },
-                { id: 3, name: "Data Structures", instructor: "Dr. Ali Mohamed", progress: 60, credits: 3, status: "In Progress" },
-                { id: 4, name: "Database Design", instructor: "Prof. Fatima Al-Mansouri", progress: 100, credits: 4, status: "Completed" },
-                { id: 5, name: "Mobile Development", instructor: "Dr. Hassan Ibrahim", progress: 45, credits: 3, status: "In Progress" },
-                { id: 6, name: "Cloud Computing", instructor: "Prof. Zainab Ali", progress: 30, credits: 4, status: "In Progress" },
-              ].map((course) => (
-                <div key={course.id} className="course-card">
-                  <div className="course-header">
-                    <h3>{course.name}</h3>
-                    <span className={`course-status ${course.status === "Completed" ? "completed" : "in-progress"}`}>
-                      {course.status}
-                    </span>
-                  </div>
-                  <p className="course-instructor">Instructor: {course.instructor}</p>
-                  <p className="course-credits">Credits: {course.credits}</p>
-                  
-                  <div className="progress-bar-container">
-                    <div className="progress-bar">
-                      <div 
-                        className="progress-fill"
-                        style={{ width: `${course.progress}%` }}
-                      ></div>
-                    </div>
-                    <span className="progress-text">{course.progress}%</span>
-                  </div>
-
-                  <button className="btn-secondary">View Details</button>
-                </div>
-              ))}
-            </div>
-          </section>
-        );
-      
-      case "attendance":
-        return (
-          <section className="section-content">
-            <div className="section-header">
-              <h2>Attendance</h2>
-            </div>
-
-            <div className="attendance-stats">
-              <div className="stat-box">
-                <div className="stat-value" style={{ color: "#22c55e" }}>92%</div>
-                <div className="stat-label">Total Attendance</div>
-              </div>
-              <div className="stat-box">
-                <div className="stat-value" style={{ color: "#22c55e" }}>92 Days</div>
-                <div className="stat-label">Present</div>
-              </div>
-              <div className="stat-box">
-                <div className="stat-value" style={{ color: "#ef4444" }}>5 Days</div>
-                <div className="stat-label">Sick Leave</div>
-              </div>
-              <div className="stat-box">
-                <div className="stat-value" style={{ color: "#ef4444" }}>3 Days</div>
-                <div className="stat-label">Absent</div>
-              </div>
-            </div>
-
-            <div className="calendar-section-large">
-              <h3>Monthly Attendance View</h3>
-              <div className="calendar-wrapper">
-                <div className="calendar-controls">
-                  <button 
-                    className="calendar-nav-btn"
-                    onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
-                  >
-                    <ChevronLeft size={20} />
-                  </button>
-                  <span className="calendar-month-label">{monthName}</span>
-                  <button 
-                    className="calendar-nav-btn"
-                    onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
-                  >
-                    <ChevronRight size={20} />
-                  </button>
-                </div>
-
-                <div className="calendar-grid-large">
-                  {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map(
-                    (day) => (
-                      <div key={day} className="calendar-day-header">
-                        {day}
-                      </div>
-                    )
-                  )}
-
-                  {Array.from({ length: getDaysInMonth(currentMonth) }).map((_, index) => {
-                    const day = index + 1;
-                    const status = attendanceData[day];
-
-                    return (
-                      <div key={day} className="calendar-date-cell">
-                        <div className="date-number">{day}</div>
-                        {status && (
-                          <div 
-                            className="status-badge"
-                            style={{ backgroundColor: getStatusColor(status) }}
-                            title={getStatusLabel(status)}
-                          >
-                            {getStatusLabel(status)}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </section>
-        );
-      
-      case "marks":
-        return (
-          <section className="section-content">
-            <div className="section-header">
-              <h2>Marks & Assessments</h2>
-            </div>
-
-            <div className="assessments-table-wrapper">
-              <table className="assessments-table">
-                <thead>
-                  <tr>
-                    <th>Assessment Title</th>
-                    <th>Course</th>
-                    <th>Type</th>
-                    <th>Marks Obtained</th>
-                    <th>Total Marks</th>
-                    <th>Percentage</th>
-                    <th>Grade</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    { id: 1, title: "Midterm Exam", course: "JavaScript", type: "Exam", obtained: 85, total: 100, percentage: 85, grade: "A", status: "Graded" },
-                    { id: 2, title: "Assignment 1", course: "Web Dev", type: "Assignment", obtained: 45, total: 50, percentage: 90, grade: "A+", status: "Graded" },
-                    { id: 3, title: "Project 1", course: "Data Structures", type: "Project", obtained: 38, total: 50, percentage: 76, grade: "B", status: "Graded" },
-                    { id: 4, title: "Quiz 3", course: "JavaScript", type: "Quiz", obtained: 18, total: 20, percentage: 90, grade: "A+", status: "Graded" },
-                    { id: 5, title: "Final Project", course: "Mobile Dev", type: "Project", obtained: 0, total: 100, percentage: 0, grade: "-", status: "Pending" },
-                    { id: 6, title: "Database Assignment", course: "Database Design", type: "Assignment", obtained: 48, total: 50, percentage: 96, grade: "A+", status: "Graded" },
-                  ].map((assessment) => (
-                    <tr key={assessment.id} className={assessment.status === "Pending" ? "pending-row" : ""}>
-                      <td className="bold">{assessment.title}</td>
-                      <td>{assessment.course}</td>
-                      <td><span className="badge-type">{assessment.type}</span></td>
-                      <td>{assessment.obtained}</td>
-                      <td>{assessment.total}</td>
-                      <td className="bold">{assessment.percentage}%</td>
-                      <td>
-                        <span className={`grade-badge grade-${assessment.grade.toLowerCase().replace('+', 'plus')}`}>
-                          {assessment.grade}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`status-badge ${assessment.status.toLowerCase()}`}>
-                          {assessment.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        );
-      
-      case "certification":
-        return (
-          <section className="section-content">
-            <div className="section-header">
-              <h2>Certifications</h2>
-            </div>
-
-            <div className="certifications-grid">
-              {[
-                { id: 1, title: "JavaScript Fundamentals Certificate", issuer: "FreeCodeCamp", date: "2024-06-15", status: "Earned" },
-                { id: 2, title: "Web Development Professional", issuer: "Coursera", date: "2024-08-20", status: "Earned" },
-                { id: 3, title: "Data Structures Mastery", issuer: "Udemy", date: "2024-09-10", status: "Earned" },
-                { id: 4, title: "Cloud Computing Fundamentals", issuer: "AWS Academy", date: "2025-01-15", status: "In Progress" },
-                { id: 5, title: "Mobile App Development", issuer: "Google", date: "", status: "Not Started" },
-                { id: 6, title: "Full Stack Developer", issuer: "LinkedIn Learning", date: "", status: "Not Started" },
-              ].map((cert) => (
-                <div key={cert.id} className="certification-card">
-                  <div className="cert-icon">
-                    <Award size={40} />
-                  </div>
-                  <h3>{cert.title}</h3>
-                  <p className="cert-issuer">Issued by: {cert.issuer}</p>
-                  {cert.date && <p className="cert-date">Date Earned: {cert.date}</p>}
-                  
-                  <div className={`cert-status ${cert.status === "Earned" ? "earned" : cert.status === "In Progress" ? "in-progress" : "not-started"}`}>
-                    {cert.status}
-                  </div>
-
-                  {cert.status === "Earned" && (
-                    <div className="cert-actions">
-                      <button className="btn-secondary">View Certificate</button>
-                      <button className="btn-secondary">Download</button>
-                    </div>
-                  )}
-                  {cert.status === "In Progress" && (
-                    <button className="btn-secondary">Continue Learning</button>
-                  )}
-                  {cert.status === "Not Started" && (
-                    <button className="btn-primary">Enroll Now</button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-        );
-      
-      default:
-        return null;
+      case 'overview': return renderOverview();
+      case 'courses': return renderCourses();
+      case 'attendance': return renderAttendance();
+      case 'marks': return renderMarks();
+      default: return null;
     }
   };
 
   return (
     <div className="dashboard-container">
-      {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-header">
-          <div className="logo-box">
-            <span className="logo-dot"></span>
-          </div>
-          <span className="logo-text">Student LMS Project</span>
+          <div className="logo-box"><span className="logo-dot" /></div>
+          <span className="logo-text">Student LMS</span>
         </div>
 
         <nav className="sidebar-nav">
-          <button 
-            className={`nav-item ${activeTab === "overview" ? "active" : ""}`}
-            onClick={() => setActiveTab("overview")}
-          >
+          <button className={`nav-item ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>
             <span className="nav-icon">📊</span>
             <span className="nav-text">Overview</span>
           </button>
-          
-          <button 
-            className={`nav-item ${activeTab === "courses" ? "active" : ""}`}
-            onClick={() => setActiveTab("courses")}
-          >
+          <button className={`nav-item ${activeTab === 'courses' ? 'active' : ''}`} onClick={() => setActiveTab('courses')}>
             <span className="nav-icon">📚</span>
             <span className="nav-text">Courses</span>
           </button>
-          
-          <button 
-            className={`nav-item ${activeTab === "attendance" ? "active" : ""}`}
-            onClick={() => setActiveTab("attendance")}
-          >
+          <button className={`nav-item ${activeTab === 'attendance' ? 'active' : ''}`} onClick={() => setActiveTab('attendance')}>
             <span className="nav-icon">📋</span>
             <span className="nav-text">Attendance</span>
           </button>
-          
-          <button 
-            className={`nav-item ${activeTab === "marks" ? "active" : ""}`}
-            onClick={() => setActiveTab("marks")}
-          >
+          <button className={`nav-item ${activeTab === 'marks' ? 'active' : ''}`} onClick={() => setActiveTab('marks')}>
             <span className="nav-icon">✏</span>
-            <span className="nav-text">Marks/ Assessments</span>
-          </button>
-          
-          <button 
-            className={`nav-item ${activeTab === "certification" ? "active" : ""}`}
-            onClick={() => setActiveTab("certification")}
-          >
-            <span className="nav-icon">🏆</span>
-            <span className="nav-text">Certification</span>
+            <span className="nav-text">Marks</span>
           </button>
         </nav>
 
         <button className="logout-btn">
-          <LogOut size={20} />
+          <LogOut size={18} />
           <span>Logout</span>
         </button>
       </aside>
 
-      {/* Main Content */}
       <main className="main-content">
-        {/* Header */}
         <header className="dashboard-header">
-          <div className="header-left">
-            <h1>STUDENT DASHBOARD</h1>
-          </div>
+          <div className="header-left"><h1>STUDENT DASHBOARD</h1></div>
           <div className="header-center">
             <div className="search-box">
-              <input
-                type="text"
-                placeholder="Search from courses..."
-                className="search-input"
-              />
+              <input type="text" placeholder="Search courses..." className="search-input" />
               <button className="search-btn">🔍</button>
             </div>
           </div>
           <div className="header-right">
-            <button className="icon-btn notification-btn">
-              <Bell size={20} />
-              <span className="notification-badge">1</span>
-            </button>
-            <button className="icon-btn settings-btn">
-              <Settings size={20} />
-            </button>
+            <button className="icon-btn notification-btn"><Bell size={18} /><span className="notification-badge">{props.unreadNotifications ?? 0}</span></button>
+            <button className="icon-btn settings-btn"><Settings size={18} /></button>
           </div>
         </header>
-        
-        {/* Tab Content */}
+
+  {/* Flash message from server (auto-fades) */}
+  <FlashMessage message={flash?.message} />
+
+  {/* Inline styles for the low-attendance flash warnings */}
+        <style>{`
+          .low-attendance-wrap { margin: 12px 20px; }
+          .low-attendance-alert { background: #fff5f5; border: 1px solid #fca5a5; color: #991b1b; padding: 12px 14px; border-radius: 6px; display:flex; align-items:center; gap:12px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
+          .low-attention-icon { display:inline-block; width:18px; height:18px; background:#ef4444; border-radius:50%; color:white; font-weight:bold; text-align:center; line-height:18px; }
+          .blink { animation: blinkAnim 1s linear infinite; }
+          @keyframes blinkAnim { 0% { opacity:1 } 50% { opacity:0.25 } 100% { opacity:1 } }
+          .low-attendance-list { display:flex; flex-direction:column; gap:8px; }
+          .low-attendance-course { font-weight:600; }
+        `}</style>
+
+        {/* Flash warnings for low attendance per course (appear immediately) */}
+        {lowAttendanceWarnings && lowAttendanceWarnings.length > 0 && (
+          <div className="low-attendance-wrap">
+            <div className="low-attendance-alert" role="alert" aria-live="assertive">
+              <div className="low-attention-icon blink">!</div>
+              <div className="low-attendance-list">
+                {lowAttendanceWarnings.map((w) => (
+                  <div key={w.cid}>
+                    <div className="low-attendance-course">Low Attendance Alert: Your attendance in {w.courseName} is below 80% ({w.percent}%).</div>
+                    <div>Please attend more classes to avoid penalties.</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {renderTabContent()}
       </main>
     </div>

@@ -14,8 +14,8 @@
 /* Sidebar Styles */
 .sidebar {
   width: 150px;
-  background: #f3f4f6;
-  color: #374151;
+  color: #f3f4f6;
+  background-color: black;
   padding: 20px 12px;
   display: flex;
   flex-direction: column;
@@ -1811,7 +1811,12 @@
   padding-top: 1.5rem;
   border-top: 1px solid #e2e8f0;
 }
-
+.logout{
+  cursor: pointer;
+  color: #ef4444;
+  font-weight: 600;
+  text-decoration: none;
+}
 /* Button with icon */
 .btn-primary, .btn-secondary {
   display: inline-flex;

@@ -5,9 +5,10 @@ import React, { useState, useEffect } from 'react';
 import { usePage, Link, useForm } from '@inertiajs/react';
 import '../css/teacher.css';
 import { Edit2, UploadCloud, CheckSquare, Bell, X, Calendar, Save } from 'lucide-react';
+import FlashMessage from '../components/FlashMessage';
 
 export default function TeacherDashboard() {
-  const { user = {}, courses = [], enrollments = [],students = [], attendance = [], results = [] } = usePage().props;
+  const { user = {}, courses = [], enrollments = [],students = [], attendance = [], results = [], flash = {} } = usePage().props;
 
   const { data, setData, post, processing, errors } = useForm({
     date: new Date().toISOString().split('T')[0],
@@ -257,9 +258,12 @@ const submitMarks = (e) => {
               <UploadCloud size={14} /> Quick Upload
             </button>
           </div>
-        </header>
+  </header>
 
-        <div className="page-body">
+  {/* Server flash message (auto-fades) */}
+  <FlashMessage message={flash?.message} />
+
+  <div className="page-body">
 
           {activeTab === 'overview' && overviewTab}
           {activeTab === 'marks' && marksTab}
