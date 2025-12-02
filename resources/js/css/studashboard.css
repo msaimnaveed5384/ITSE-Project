@@ -13,8 +13,8 @@
 
 /* Sidebar Styles */
 .sidebar {
-  width: 150px;
-  background: #f3f4f6;
+  width: 200px;
+  background: black;
   color: #374151;
   padding: 20px 12px;
   display: flex;
@@ -26,6 +26,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  color: white;
   margin-bottom: 30px;
   padding: 10px;
 }
@@ -48,10 +49,10 @@
 }
 
 .logo-text {
-  font-size: 12px;
+  font-size: 20px;
   font-weight: 600;
   line-height: 1.2;
-  color: #1f2937;
+  color: white;
 }
 
 .sidebar-nav {
@@ -127,7 +128,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 30px;
-  background: white;
+  background: black;
+  color: white;
   border-bottom: 1px solid #e5e7eb;
   gap: 20px;
 }
@@ -135,7 +137,7 @@
 .header-left h1 {
   font-size: 20px;
   font-weight: 700;
-  color: #1f2937;
+  color: white;
   margin: 0;
 }
 

@@ -11,6 +11,8 @@ const { data, setData, post, processing, errors } = useForm({
     remember: false,
 });
 
+console.log(errors);
+
 function submit(e) {
     e.preventDefault();
     post('/login')
@@ -39,7 +41,10 @@ function submit(e) {
               <p className="text-center text-muted mb-4 small letter-space">
                 PLEASE LOGIN TO CONTINUE TO YOUR ACCOUNT
               </p>
-
+              {data.error && <div className="alert alert-danger">{data.error}</div>
+              
+            }
+            {errors.login_error && <div className="alert alert-danger">{errors.login_error}</div>}
               <form onSubmit={submit} autoComplete="off">
                 {/* Email */}
                 <div className="mb-3">
@@ -51,6 +56,7 @@ function submit(e) {
                     className="form-control form-control-lg rounded-0"
                     placeholder="Username"
                     onChange={(e) => {setData('username',e.target.value)}}
+                    required
                   />
                 </div>
 
@@ -64,7 +70,7 @@ function submit(e) {
                       type="password"
                       className="form-control form-control-lg rounded-0"
                       placeholder="Password"
-                      
+                      required
                       onChange={(e)=>{setData('password', e.target.value)}}
                     />
 

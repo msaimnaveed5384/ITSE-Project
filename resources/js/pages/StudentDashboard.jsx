@@ -1,13 +1,13 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import "../css/studashboard.css";
 import { LogOut, Bell, Settings } from "lucide-react";
 import { Link, usePage } from "@inertiajs/react";
-import FlashMessage from "../components/FlashMessage";
+// import FlashMessage from "../components/FlashMessage";
 
 function StudentDashboard() {
   // Expect Inertia props: user (object) or users (collection), enrollments (array), courses (array), attendances (array), marks (array)
   const props = usePage().props || {};
-  const { user, users, enrollments = [], courses = [], attendances = [], marks = [], flash = {} } = props;
+  const { user, users, enrollments = [], courses = [], attendances = [], marks = [], flash = [] } = props;
 
   // Determine current user object (the controller previously passed `users` collection)
   const currentUser = useMemo(() => {
@@ -18,7 +18,19 @@ function StudentDashboard() {
   }, [user, users]);
 
   const [activeTab, setActiveTab] = useState("overview");
+const [flasMsg, setFlasMsg] = useState(null);
 
+useEffect(() => {
+  if (flash.message) {
+    setFlasMsg(flash.message);
+
+    const timer = setTimeout(() => {
+      setFlasMsg(null);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }
+}, [flash.message]);
 
   // Derive enrollments for this student. If enrollments list is global, filter by student id.
   const studentEnrollments = useMemo(() => {
@@ -374,12 +386,98 @@ function StudentDashboard() {
     </section>
   );
 
+  // Results tab: show subject-wise assessments and aggregated result per subject
+  const renderResults = () => (
+    <section className="section-content">
+      <div className="section-header"><h2>Results</h2></div>
+
+      {enrolledCourses.length === 0 && <div className="muted">No enrolled courses to show results for.</div>}
+
+      {enrolledCourses.map(({ enroll, course }) => {
+        const cid = (course && course.id) || enroll.course_id || 'unknown';
+        const key = cid;
+        const group = marksByCourse[key] || marksByCourse[enroll.id] || { items: [] };
+        const items = Array.isArray(group.items) ? group.items : [];
+
+        // compute aggregated sums
+        let sumObtained = 0;
+        let sumTotal = 0;
+        for (const m of items) {
+          const obtained = Number(m.obtained_marks ?? m.obtained ?? 0) || 0;
+          const total = Number(m.total_marks ?? m.total ?? 0) || 0;
+          // only add when numbers are meaningful
+          sumObtained += obtained;
+          sumTotal += total;
+        }
+        const aggPercent = sumTotal > 0 ? Math.round((sumObtained / sumTotal) * 100) : null;
+
+        return (
+          <div key={key} className="subject-results" style={{ marginBottom: 24 }}>
+            <div className="section-header">
+              <h3 style={{ margin: 0 }}>{(course && (course.name || course.title)) || enroll.course_title || 'Course'}</h3>
+              <div className="stat-label">{(course && course.credits) ? `${course.credits} credits` : ''}</div>
+            </div>
+
+            <div className="assessments-table-wrapper">
+              <table className="assessments-table">
+                <thead>
+                  <tr>
+                    <th>Assessment</th>
+                    <th>Type</th>
+                    <th>Obtained</th>
+                    <th>Total</th>
+                    <th>%</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.length === 0 && (
+                    <tr><td colSpan={5} className="muted">No assessments recorded for this subject.</td></tr>
+                  )}
+                  {items.map((m) => {
+                    const obtained = Number(m.obtained_marks ?? m.obtained ?? 0) || 0;
+                    const total = Number(m.total_marks ?? m.total ?? 0) || 0;
+                    const percent = total > 0 ? Math.round((obtained / total) * 100) : '—';
+                    return (
+                      <tr key={m.id || `${m.enroll_id}-${m.type}-${m.title || ''}`}>
+                        <td className="bold">{m.title || m.type || 'Assessment'}</td>
+                        <td><span className="badge-type">{m.type || '-'}</span></td>
+                        <td>{m.obtained_marks ?? m.obtained ?? '-'}</td>
+                        <td>{m.total_marks ?? m.total ?? '-'}</td>
+                        <td className="bold">{percent}{percent !== '—' ? '%' : ''}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                {items.length > 0 && (
+                  <tfoot>
+                    <tr>
+                      <td colSpan={2} style={{ textAlign: 'right', paddingRight: 12 }} className="bold">Subject Total:</td>
+                      <td className="bold">{sumObtained}</td>
+                      <td className="bold">{sumTotal}</td>
+                      <td className="bold">{aggPercent !== null ? `${aggPercent}%` : '—'}</td>
+                    </tr>
+                    <tr>
+                      <td colSpan={5} style={{ paddingTop: 8 }}>
+                        <div className="result-description muted">Result Description: This subject aggregates all assessments. Obtained {sumObtained} out of {sumTotal}{sumTotal > 0 ? `, Final ${aggPercent}%` : ''}.</div>
+                      </td>
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+          </div>
+        );
+      })}
+    </section>
+  );
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'overview': return renderOverview();
       case 'courses': return renderCourses();
       case 'attendance': return renderAttendance();
       case 'marks': return renderMarks();
+      case 'results': return renderResults();
       default: return null;
     }
   };
@@ -409,12 +507,16 @@ function StudentDashboard() {
             <span className="nav-icon">✏</span>
             <span className="nav-text">Marks</span>
           </button>
+          <button className={`nav-item ${activeTab === 'results' ? 'active' : ''}`} onClick={() => setActiveTab('results')}>
+            <span className="nav-icon">🧾</span>
+            <span className="nav-text">Results</span>
+          </button>
         </nav>
 
-        <button className="logout-btn">
+        <Link href="/logout" className="logout-btn">
           <LogOut size={18} />
           <span>Logout</span>
-        </button>
+        </Link>
       </aside>
 
       <main className="main-content">
@@ -430,10 +532,30 @@ function StudentDashboard() {
             <button className="icon-btn notification-btn"><Bell size={18} /><span className="notification-badge">{props.unreadNotifications ?? 0}</span></button>
             <button className="icon-btn settings-btn"><Settings size={18} /></button>
           </div>
+          {flasMsg && (
+  <div 
+    className="position-fixed top-0 end-0 p-3" 
+    style={{ zIndex: 9999 }}
+  >
+    <div 
+      className="alert alert-info alert-dismissible fade show shadow" 
+      role="alert"
+    >
+      {flasMsg}
+
+      <button 
+        type="button" 
+        className="btn-close" 
+        data-bs-dismiss="alert" 
+        aria-label="Close"
+      ></button>
+    </div>
+  </div>
+)}
         </header>
 
   {/* Flash message from server (auto-fades) */}
-  <FlashMessage message={flash?.message} />
+  
 
   {/* Inline styles for the low-attendance flash warnings */}
         <style>{`

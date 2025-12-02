@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\HandleAdmin;
+use App\Http\Middleware\HandleStudents;
+use App\Http\Middleware\HandleTeachers;
 use App\Http\Middleware\HandleUsers;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -13,20 +15,26 @@ Route::get('/', function () {
 })->name('home');
 
 
-Route::post('/login',[UserController::class, 'Login']);
+Route::post('/login', [UserController::class, 'Login']);
 
-Route::get('/dashboard/student', [UserController::class, 'studentDashboard'])->middleware(HandleUsers::class);
-Route::get('/dashboard/admin', [UserController::class, 'adminDashboard'])->middleware(HandleAdmin::class);
-Route::get('/dashboard/teacher',[UserController::class, 'teacherDashboard'])->middleware(HandleUsers::class);
-
-
-Route::post('/adduser', [UserController::class,'addUser'])->middleware(HandleAdmin::class);
-Route::post('/addcourse', [UserController::class, 'addcourse'])->middleware(HandleAdmin::class);
-Route::post('/enrollstudent', [UserController::class, 'enrollStudent'])->middleware(HandleAdmin::class);
-Route::post('/markattendance', [UserController::class, 'markAttendance']);
-Route::post('/uploadmarks', [UserController::class, 'uploadMarks']);
-
-Route::get('/logout',function(){
+Route::get('/logout', function () {
     Auth::logout();
     return redirect('/');
+});
+
+Route::middleware([HandleUsers::class])->group(function () {
+    Route::middleware([HandleAdmin::class])->group(function () {
+        Route::get('/dashboard/admin', [UserController::class, 'adminDashboard']);
+        Route::post('/adduser', [UserController::class, 'addUser']);
+        Route::post('/addcourse', [UserController::class, 'addcourse']);
+        Route::post('/enrollstudent', [UserController::class, 'enrollStudent']);
+    });
+    Route::middleware([HandleTeachers::class])->group(function(){
+        Route::get('/dashboard/teacher', [UserController::class, 'teacherDashboard']);
+        Route::post('/markattendance', [UserController::class, 'markAttendance']);
+        Route::post('/uploadmarks', [UserController::class, 'uploadMarks']);
+    });
+    Route::middleware([HandleStudents::class])->group(function(){
+        Route::get('/dashboard/student', [UserController::class, 'studentDashboard']);
+    });
 });

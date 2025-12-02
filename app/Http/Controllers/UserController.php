@@ -41,14 +41,15 @@ class UserController extends Controller
     }
 
     public function uploadMarks(Request $req){
+        // dd($req);
         // Expect payload: courseId, type, total_marks, marks => [{ studentId, obtained_marks }, ...]
         $validator = Validator::make($req->all(), [
             'courseId' => 'required|integer|exists:courses,id',
             'type' => 'required|in:Exam,Quiz,Assignment,Project',
             'total_marks' => 'required|integer|min:0',
-            'marks' => 'required|array|min:1',
-            'marks.*.studentId' => 'required|integer|exists:users,id',
-            'marks.*.obtained_marks' => 'required|integer|min:0'
+            
+            'studentId' => 'required|integer|exists:users,id',
+            'obtained_marks' => 'required'
         ]);
 
         if ($validator->fails()) {
@@ -60,106 +61,109 @@ class UserController extends Controller
         if (!$course || $course->teacher_id != Auth::user()->id) {
             return redirect()->back()->with('message', 'You are not authorized to upload marks for this course.');
         }
-
-        // Pre-check duplicates: for Exam and Project disallow duplicate submissions per student
-        $immutableTypes = ['Exam', 'Project'];
-        foreach ($req->marks as $m) {
-            $enroll = Enrollment::where('student_id', $m['studentId'])->where('course_id', $req->courseId)->first();
-            if (!$enroll) {
-                return redirect()->back()->with('message', "Enrollment not found for student ID {$m['studentId']} in this course.");
-            }
-
-            if (in_array($req->type, $immutableTypes)) {
-                $exists = Mark::where('enroll_id', $enroll->id)
-                              ->where('type', $req->type)
-                              ->exists();
-                if ($exists) {
-                    $student = User::find($m['studentId']);
-                    $sname = $student ? $student->name : $m['studentId'];
-                    return redirect()->back()->with('message', "{$req->type} marks for student {$sname} have already been submitted.");
-                }
-            }
+        //type casting for student id and course id
+        $req->student_id = (int)$req->studentId;
+        $req->courseId = (int)$req->courseId;
+        $enrollId = Enrollment::where('student_id', $req->student_id)
+                            ->where('course_id', $req->courseId)
+                            ->first();
+                            // dd($enrollId);
+        if (!$enrollId) {
+            return redirect()->back()->with('message', 'The specified student is not enrolled in this course.');
         }
+        
+        //enter marks in marks table
+        
+        Mark::create([
+            'enroll_id' => $enrollId->id,
+            'marked_by' => Auth::id(),
+            'type' => $req->type,
+            'total_marks' => $req->total_marks,
+            'obtained_marks' => $req->obtained_marks,
+           
+        ]);
+       
 
-        $created = 0;
-        foreach ($req->marks as $m) {
-            $enroll = Enrollment::where('student_id', $m['studentId'])->where('course_id', $req->courseId)->first();
-            if (!$enroll) continue; // already validated above, but guard anyway
-
-            Mark::create([
-                'enroll_id' => $enroll->id,
-                'type' => $req->type,
-                'total_marks' => $req->total_marks,
-                'obtained_marks' => $m['obtained_marks'],
-                'marked_by' => Auth::user()->id,
-            ]);
-            $created++;
-        }
-
-        return redirect()->back()->with('success', "Uploaded {$created} marks");
+        return redirect()->back()->with('success', "Marks Uploaded Successfully.");
     }
 
-    public function markAttendance(Request $req){
-        // Expect payload: date, course_id, attendances => [{ enroll_id, status }, ...]
-        $validator = Validator::make($req->all(), [
-            'date' => 'required|date',
-            'course_id' => 'required|integer|exists:courses,id',
-            'attendances' => 'required|array|min:1',
-            'attendances.*.enroll_id' => 'required|integer|exists:enrollments,id',
-            'attendances.*.status' => 'required|in:P,A,L'
+   public function markAttendance(Request $req)
+{
+    // Convert attendance associative array => list of arrays
+    // Input: [2 => "P", 3 => "P"]
+    // Output: [ ["enroll_id" => 2, "status" => "P"], ... ]
+    $attendances = collect($req->attendance)->map(function ($status, $enrollId) {
+        return [
+            'enroll_id' => $enrollId,
+            'status' => $status
+        ];
+    })->values()->toArray();
+
+    // Validate
+    $validator = Validator::make([
+        'date' => $req->date,
+        'course_id' => $req->course_id,
+        'attendances' => $attendances
+    ], [
+        'date' => 'required|date',
+        'course_id' => 'required|integer|exists:courses,id',
+
+        'attendances' => 'required|array|min:1',
+        'attendances.*.enroll_id' => 'required|integer|exists:enrollments,id',
+        'attendances.*.status' => 'required|in:P,A,L'
+    ]);
+
+    if ($validator->fails()) {
+        return back()->with('message', $validator->errors()->first());
+    }
+
+    // Ensure teacher owns the course
+    $course = Course::find($req->course_id);
+    if (!$course || $course->teacher_id != Auth::id()) {
+        return back()->with('message', 'You are not authorized to mark attendance for this course.');
+    }
+
+    $created = 0;
+
+    foreach ($attendances as $a) {
+        $enroll = Enrollment::find($a['enroll_id']);
+
+        if (!$enroll) {
+            continue;
+        }
+
+        // Ensure enrollment belongs to the selected course
+        if ($enroll->course_id != $req->course_id) {
+            return back()->with('message', "Enrollment ID {$a['enroll_id']} does not belong to this course.");
+        }
+
+        // Prevent duplicate attendance
+        $exists = Attendance::where('enroll_id', $a['enroll_id'])
+            ->where('date', $req->date)
+            ->exists();
+
+        if ($exists) {
+            $student = User::find($enroll->student_id);
+            $name = $student ? $student->name : 'Student';
+            return back()->with('message', "Attendance for {$name} on {$req->date} already exists.");
+        }
+
+        // Save attendance
+        Attendance::create([
+            'enroll_id' => $a['enroll_id'],
+            'markby' => Auth::id(),
+            'status' => $a['status'],
+            'date' => $req->date,
+            'student_id' => $enroll->student_id,
+            'course_id' => $enroll->course_id,
         ]);
 
-        if ($validator->fails()) {
-            return redirect()->back()->with('message', $validator->errors()->first());
-        }
-
-        // Ensure teacher owns the course
-        $course = Course::find($req->course_id);
-        if (!$course || $course->teacher_id != Auth::user()->id) {
-            return redirect()->back()->with('message', 'You are not authorized to mark attendance for this course.');
-        }
-
-        // Pre-check: ensure no attendance already exists for same enroll_id + date
-        foreach ($req->attendances as $a) {
-            $enroll = Enrollment::find($a['enroll_id']);
-            if (!$enroll) {
-                return redirect()->back()->with('message', "Enrollment ID {$a['enroll_id']} not found.");
-            }
-
-            // ensure the enrollment belongs to the same course
-            if ($enroll->course_id != $req->course_id) {
-                return redirect()->back()->with('message', "Enrollment ID {$a['enroll_id']} does not belong to the selected course.");
-            }
-
-            $exists = Attendance::where('enroll_id', $a['enroll_id'])->where('date', $req->date)->exists();
-            if ($exists) {
-                $student = User::find($enroll->student_id);
-                $sname = $student ? $student->name : $enroll->student_id;
-                return redirect()->back()->with('message', "Attendance for student {$sname} on {$req->date} has already been marked.");
-            }
-        }
-
-        $created = 0;
-        foreach ($req->attendances as $a) {
-            $enroll = Enrollment::find($a['enroll_id']);
-            if (!$enroll) continue;
-
-            $attendanceData = [
-                'enroll_id' => $a['enroll_id'],
-                'markby' => Auth::user()->id,
-                'status' => $a['status'],
-                'date' => $req->date,
-                'student_id' => $enroll->student_id,
-                'course_id' => $enroll->course_id,
-            ];
-
-            // create new attendance record (duplicates already prevented above)
-            $att = Attendance::create($attendanceData);
-            if ($att) $created++;
-        }
-
-        return redirect()->back()->with('success', "Saved {$created} attendance records");
+        $created++;
     }
+
+    return back()->with('success', "Saved {$created} attendance records.");
+}
+
     public function studentDashboard(){
         // Current authenticated user
         $user = User::find(Auth::user()->id);
@@ -294,7 +298,7 @@ class UserController extends Controller
         }
 
         else{
-            return redirect()->back();
+            return redirect()->back()->withErrors(['login_error' => 'Invalid username or password.']);
         }
     }
 

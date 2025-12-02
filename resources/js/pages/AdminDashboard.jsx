@@ -1,8 +1,8 @@
-import React, { use, useState } from 'react'; 
+import React, { useEffect, useState } from 'react'; 
 import { Link, useForm, usePage} from '@inertiajs/react';
 import '../css/admin.css'; 
 import { Trash2, Edit2, Info, Plus, UserPlus, BookOpen } from 'lucide-react'; 
-import FlashMessage from '../components/FlashMessage';
+
 
 export default function AdminDashboard() {
   // Normalize page props and ensure `users` is always an array.
@@ -10,7 +10,8 @@ export default function AdminDashboard() {
   const usersProp = pageProps.users;
   const courseProp = pageProps.courses;
   const enrollmentsProp = pageProps.enrollments;
-  console.log(enrollmentsProp);
+  
+
   let users = [];
   
   if (Array.isArray(usersProp)) {
@@ -22,14 +23,58 @@ export default function AdminDashboard() {
   } else {
     users = [];
   }
+  
 
-  const { courses = [], enrollments = [], attendance = [], results = [], flash = {} } = pageProps;
+  const { courses = [], enrollments = [], attendance = [], results = [] } = pageProps;
+  const page = usePage();
+  const flashFromProps = page.props?.flash || {};
+  const flashIdFromProps = page.props?.flash_id || page.props?._flash_id || null;
+
+  // Robust flash state: supports repeated identical messages when backend
+  // supplies a unique `flash_id`. Auto-hides after 3s.
   const [activeSection, setActiveSection] = useState('overview'); 
   const [activeTab, setActiveTab] = useState('data'); // 'data' or 'description'
   const [showAddCourse, setShowAddCourse] = useState(false);
   const [showAddUser, setShowAddUser] = useState(false);
   const [showAddEnrollment, setShowAddEnrollment] = useState(false);
-  
+
+  const [flashVisible, setFlashVisible] = useState(false);
+  const [flashMessage, setFlashMessage] = useState(null);
+  const [lastFlashId, setLastFlashId] = useState(null);
+
+  useEffect(() => {
+    const msg = flashFromProps?.message;
+    if (!msg) {
+      setFlashVisible(false);
+      setFlashMessage(null);
+      return;
+    }
+
+    if (flashIdFromProps) {
+      if (flashIdFromProps !== lastFlashId) {
+        setFlashMessage(msg);
+        setFlashVisible(true);
+        setLastFlashId(flashIdFromProps);
+      }
+    } else {
+      // No flash id from backend — show on text change or force re-show
+      if (msg !== flashMessage) {
+        setFlashMessage(msg);
+        setFlashVisible(true);
+      } else {
+        // Force re-show briefly to allow identical text to appear again
+        setFlashMessage(msg);
+        setFlashVisible(false);
+        setTimeout(() => setFlashVisible(true), 10);
+      }
+    }
+  }, [flashFromProps?.message, flashIdFromProps]);
+
+  useEffect(() => {
+    if (!flashVisible) return;
+    const t = setTimeout(() => setFlashVisible(false), 3000);
+    return () => clearTimeout(t);
+  }, [flashVisible]);
   // UseForm for course
   const { data: courseData, setData: setCourseData, post: postCourse, processing: courseProcessing, errors: courseErrors, reset: resetCourse } = useForm({
     name: '',
@@ -674,8 +719,9 @@ export default function AdminDashboard() {
 
   return ( 
     <div className="admin-dashboard layout"> 
-      <aside className="sidebar"> 
-        <div className="brand">Admin</div> 
+      <aside className="sidebar bg-dark text-white"> 
+        <h3 className="brand text-white">Student Portal</h3> 
+        
         <nav className="nav"> 
           <button className={`nav-item ${activeSection === 'overview' ? 'active' : ''}`} onClick={() => { setActiveSection('overview'); setActiveTab('data'); }}>Overview</button> 
           <button className={`nav-item ${activeSection === 'courses' ? 'active' : ''}`} onClick={() => { setActiveSection('courses'); setActiveTab('data'); }}>Courses</button> 
@@ -688,17 +734,37 @@ export default function AdminDashboard() {
         </nav> 
       </aside> 
       <main className="main-content"> 
-        <header className="page-header"> 
+        <header className="page-header bg-dark text-white rounded p-3 mb-5"> 
           <h2>Admin Dashboard</h2> 
           <div className="header-actions"> 
             {renderTabButtons()}
            
           </div> 
+{flashVisible && (
+  <div 
+    className="position-fixed top-0 end-0 p-3" 
+    style={{ zIndex: 9999 }}
+  >
+    <div 
+      className="alert alert-info alert-dismissible fade show shadow" 
+      role="alert"
+    >
+      {flashMessage}
+
+      <button 
+        type="button" 
+        className="btn-close" 
+        data-bs-dismiss="alert" 
+        aria-label="Close"
+        onClick={() => setFlashVisible(false)}
+      ></button>
+    </div>
+  </div>
+)}
+
   </header> 
 
-  {/* Server flash message (auto-fades) */}
-  <FlashMessage message={flash?.message} />
-
+   
   <section className="page-body"> 
           {activeSection === 'overview' && renderOverview()} 
           {activeSection === 'courses' && renderCourses()} 
