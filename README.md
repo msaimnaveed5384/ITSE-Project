@@ -1,9 +1,128 @@
-The University Learning Management System is a complete, fully functional, and responsive web application developed using React and (Laravel) php. It simulates the core academic operations of a university by providing three separate portals for Admins, Teachers, and Students. Each portal is designed to support the specific tasks of its user type. Admins can oversee system data and manage user accounts, Teachers can mark attendance, upload results, and review class information, and Students can view their attendance, marks, and academic progress. All data interactions, including user login validation, attendance updates, and result calculations, are handled entirely on the client side using browser local storage, ensuring that the system functions smoothly without any backend server.
+# DiscreteFinalProject
 
-The project follows a complete software engineering workflow beginning with high-fidelity UI/UX design. All screens were designed in Figma with pixel-perfect mockups and an interactive, clickable prototype demonstrating full user flows from login to task completion. The design process also included a detailed style guide defining the color palette, typography, and reusable components, ensuring visual consistency across all pages. The application strictly follows the Three-Tier Client-Side Architecture, where React form the presentation layer, modular Laravel concepts acts as the logic layer, and database serves as the data layer. This structure helps maintain clear separation of concerns, improves readability, and aligns fully with the required architectural design principles.
+Final project for Discrete Structures — C++ implementations and demonstrations of selected discrete mathematics concepts and algorithms used in the course.
 
-The implementation phase uses clean, modular, and maintainable code. All logic is divided into separate files, such as authentication handling, database management, and UI updates, ensuring that the application remains organized and scalable. No inline CSS or inline JavaScript is used, and all styles and scripts are external and well-structured. The repository also includes a meaningful commit history that reflects consistent contributions and professional development practices throughout the project’s lifecycle.
+## Table of contents
 
-Testing was carried out using a structured test case table that includes both positive and negative scenarios for key features such as login validation, attendance marking, result uploading, and data retrieval. Each test case documents the steps, expected result, actual result, and final pass or fail status to ensure the application behaves correctly and reliably. The project concludes with complete deployment on GitHub Pages, making the system fully accessible as a live web application. Users can run the project locally by simply opening the index.html file in any modern browser, without requiring additional setup or configuration.
+- [Overview](#overview)
+- [Features](#features)
+- [Repository structure](#repository-structure)
+- [Requirements](#requirements)
+- [Build & run](#build--run)
+- [Usage examples](#usage-examples)
+- [Testing](#testing)
+- [Contributing](#contributing)
+- [Author](#author)
+- [License](#license)
 
-This repository represents the complete lifecycle of a professionally executed academic management system, including design, architecture, implementation, testing, and deployment. It reflects a strong emphasis on code clarity, UI consistency, modular structure, and adherence to formal software engineering standards.
+## Overview
+
+This repository contains the final project for the Discrete Structures course. It is implemented entirely in C++ and includes programs that demonstrate topics such as:
+
+- Graph algorithms (BFS, DFS, shortest paths, connectivity)
+- Set and relation operations
+- Basic combinatorics and counting utilities
+- Logical formulas and truth-table evaluation
+- Any additional discrete structures assignments or demonstrations provided for the course
+
+Each program is intended to be modular and easy to build. Wherever applicable, example inputs and expected outputs are included in the `examples/` directory.
+
+## Features
+
+- Clean, documented C++ code organized by topic
+- Command-line programs that accept input via files or stdin
+- Small example inputs to help validate each program
+- Simple build instructions using g++/Make/CMake
+
+## Repository structure
+
+- src/            — C++ source files (main programs and modules)
+- include/        — Header files (if present)
+- examples/       — Example input files and sample outputs
+- docs/           — Additional documentation, explanations, or the project report
+- tests/          — Unit or integration tests (optional)
+- README.md       — This file
+
+If some directories are not present yet, they are suggested organization guidelines you can adopt.
+
+## Requirements
+
+- A C++ compiler supporting C++11 or later (g++, clang++)
+- make (optional, if a Makefile is provided)
+- cmake (optional, if a CMakeLists.txt is present)
+
+## Build & run
+
+Build a single source file with g++:
+
+```bash
+g++ -std=c++11 -O2 -Wall -o bin/program src/program.cpp
+```
+
+Build all sources with a Makefile (if included):
+
+```bash
+make
+```
+
+Or using CMake (recommended for multi-file projects):
+
+```bash
+mkdir -p build && cd build
+cmake ..
+cmake --build .
+```
+
+Run a compiled program:
+
+```bash
+./bin/program [arguments]
+```
+
+Replace `src/program.cpp` and `program` with the actual file and executable names used in this repository.
+
+## Usage examples
+
+If example inputs are provided in `examples/`:
+
+```bash
+./bin/program < examples/input1.txt
+```
+
+If a program expects command-line arguments:
+
+```bash
+./bin/graph_solver graphs/graph1.txt output.txt
+```
+
+Add short usage notes at the top of each `src/*.cpp` file describing expected input and arguments.
+
+## Testing
+
+If tests exist under `tests/`, run them with the project's test runner or using the Makefile target:
+
+```bash
+make test
+```
+
+For simple verification, compare program output with expected output files in `examples/`.
+
+## Contributing
+
+Contributions and improvements are welcome. To contribute:
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b my-feature`
+3. Make changes with clear, focused commits
+4. Add or update tests/examples if applicable
+5. Open a pull request describing the change
+
+If you find bugs, please open an issue with reproduction steps and relevant input files.
+
+## Author
+
+Muhammad Saim Naveed (@msaimnaveed2005)
+
+## License
+
+This repository does not include a LICENSE file yet. If you intend to make the project open-source, consider adding a license such as the MIT License. To add the MIT license create a `LICENSE` file with the standard MIT text.
